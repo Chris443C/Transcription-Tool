@@ -1,4 +1,4 @@
-"""# Boost Audio and Generate English Subtitles
+# Boost Audio and Generate English Subtitles
 
 This script automatically **amplifies audio files**, **transcribes**, and **translates** subtitles to **English** using OpenAI's Whisper.
 
