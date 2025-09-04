@@ -1,2 +1,5 @@
-openai-whisper
-ffmpeg-python
+openai-whisper>=20231117
+ffmpeg-python>=0.2.0
+PyQt6>=6.5.0
+deep_translator>=1.11.4
+pysrt>=1.1.2

@@ -1,0 +1,143 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+transcription-env/
+dev-env/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Application-specific
+# Audio files
+*.mp3
+*.mp4
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+
+# Output directories
+output/
+output_subtitles/
+boosted_audio/
+logs/
+temp/
+tmp/
+
+# Configuration files with sensitive data
+*.env.local
+
+# Model cache (Whisper models can be large)
+.cache/
+models/
+whisper_models/
+
+# Archive directory (contains backups, test files, screenshots)
+archive/
+
+# Backup directories
+backup_*/
+backups/
+
+# Screenshots and test media
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+
+# Processing artifacts
+*.srt.bak
+*.log
+*.tmp
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.lnk
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Environments
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Translation cache
+translation_cache/
+.translator_cache
+
+# Large temporary files
+*.part
+*.crdownload
