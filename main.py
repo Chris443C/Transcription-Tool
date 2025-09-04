@@ -6,60 +6,114 @@ Provides a unified entry point for the transcription application with all improv
 import sys
 import argparse
 from pathlib import Path
+import os
 
 # Add src directory to Python path
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
-from src.ui.enhanced_modern_gui import EnhancedTranscriptionGUI
-from src.legacy.compatibility_layer import monkey_patch_legacy_gui
-
-
 def run_enhanced_gui():
     """Run the enhanced GUI application with all improvements"""
-    app = EnhancedTranscriptionGUI()
-    app.run()
+    try:
+        # Try to import and run the enhanced GUI
+        from src.ui.enhanced_modern_gui import EnhancedTranscriptionGUI
+        app = EnhancedTranscriptionGUI()
+        app.run()
+    except ImportError as e:
+        print(f"WARNING: Enhanced GUI not available: {e}")
+        print("Falling back to legacy GUI...")
+        run_legacy_gui()
 
 
 def run_legacy_gui():
-    """Run the legacy GUI with new architecture integration"""
-    # Apply monkey patch for new architecture integration
-    if monkey_patch_legacy_gui():
-        print("✅ Legacy GUI enhanced with new architecture")
-    else:
-        print("⚠️  Running legacy GUI without enhancements")
-    
-    # Import and run legacy GUI
+    """Run the legacy GUI"""
     try:
-        from boost_and_transcribe_gui import BoostTranscribeGUI
-        import tkinter as tk
-        root = tk.Tk()
-        app = BoostTranscribeGUI(root)
-        root.mainloop()
-    except ImportError as e:
-        print(f"❌ Could not load legacy GUI: {e}")
-        print("🔄 Falling back to enhanced GUI...")
-        run_enhanced_gui()
+        # Try to import the legacy GUI from the current directory
+        if os.path.exists("boost_and_transcribe_gui.py"):
+            import boost_and_transcribe_gui
+            print("[OK] Starting legacy GUI...")
+            # If the legacy GUI has a main function, call it
+            if hasattr(boost_and_transcribe_gui, 'main'):
+                boost_and_transcribe_gui.main()
+            else:
+                print("WARNING: Legacy GUI found but no main function")
+        else:
+            print("[ERROR] Legacy GUI not found (boost_and_transcribe_gui.py)")
+            print("Available files:")
+            for file in os.listdir("."):
+                if file.endswith(".py"):
+                    print(f"   - {file}")
+    except Exception as e:
+        print(f"[ERROR] Could not run legacy GUI: {e}")
+
+
+def check_system_info():
+    """Display system information and capabilities"""
+    print("\nSystem Information:")
+    print(f"   Python version: {sys.version.split()[0]}")
+    print(f"   Working directory: {os.getcwd()}")
+    
+    # Check for key dependencies
+    dependencies = {
+        "tkinter": "GUI framework",
+        "pathlib": "File path handling", 
+        "argparse": "Command line parsing"
+    }
+    
+    print("\nCore Dependencies:")
+    for dep, desc in dependencies.items():
+        try:
+            __import__(dep)
+            print(f"   [OK] {dep}: {desc}")
+        except ImportError:
+            print(f"   [MISSING] {dep}: {desc} - NOT AVAILABLE")
+    
+    # Check for optional advanced dependencies
+    optional_deps = {
+        "PyQt6": "Enhanced GUI",
+        "torch": "GPU acceleration",
+        "whisper": "Transcription engine",
+        "soundfile": "Audio processing",
+        "ffmpeg": "Media conversion"
+    }
+    
+    print("\nOptional Advanced Features:")
+    for dep, desc in optional_deps.items():
+        try:
+            __import__(dep.lower() if dep != "PyQt6" else "PyQt6")
+            print(f"   [OK] {dep}: {desc}")
+        except ImportError:
+            print(f"   [OPTIONAL] {dep}: {desc} - Install for enhanced features")
 
 
 def main():
     """Main application entry point with argument parsing"""
-    parser = argparse.ArgumentParser(description="Audio/Video Transcription Tool v2.1")
+    parser = argparse.ArgumentParser(description="Professional Audio/Video Transcription Tool v2.1")
     parser.add_argument("--gui", choices=["enhanced", "legacy"], default="enhanced",
                        help="Choose GUI version to run (default: enhanced)")
-    parser.add_argument("--version", action="version", version="%(prog)s 2.1.0")
+    parser.add_argument("--version", action="store_true", help="Show version and system info")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     
     args = parser.parse_args()
     
-    print("🎤 Audio/Video Transcription Tool v2.1.0")
-    print("Enhanced with parallel processing, error handling, and modern UI")
-    print("=" * 65)
+    print("Professional Audio/Video Transcription Tool v2.1.0")
+    print("AI-powered transcription with GPU acceleration")
+    print("=" * 60)
+    
+    if args.version:
+        check_system_info()
+        return
+    
+    if args.debug:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        print("[DEBUG] Debug logging enabled")
     
     if args.gui == "enhanced":
-        print("🚀 Starting enhanced GUI with all improvements...")
+        print("[ENHANCED] Starting enhanced GUI with all improvements...")
         run_enhanced_gui()
     elif args.gui == "legacy":
-        print("🔄 Starting legacy GUI with modern architecture...")
+        print("[LEGACY] Starting legacy GUI...")
         run_legacy_gui()
 
 

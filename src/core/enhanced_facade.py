@@ -239,10 +239,10 @@ class EnhancedProcessingFacade:
             # Use error handler's retry mechanism for the entire batch
             return self.error_handler.execute_with_retry(
                 self._execute_parallel_processing,
-                context=context,
-                service_name="batch_processor",
                 file_paths,
-                options
+                options,
+                context=context,
+                service_name="batch_processor"
             )
             
         except TranscriptionError as e:
@@ -303,10 +303,10 @@ class EnhancedProcessingFacade:
         
         return self.error_handler.execute_with_retry(
             self._execute_parallel_processing,
-            context=context,
-            service_name="single_file_processor",
             [file_path],
-            options
+            options,
+            context=context,
+            service_name="single_file_processor"
         )
     
     def _create_error_jobs(self, file_paths: List[str], error: TranscriptionError) -> List[ProcessingJob]:

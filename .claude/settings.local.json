@@ -5,7 +5,9 @@
       "Bash(python test:*)",
       "Bash(python:*)",
       "Bash(pkill:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(timeout:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

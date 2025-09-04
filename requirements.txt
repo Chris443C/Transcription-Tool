@@ -1,5 +1,30 @@
+# Core Dependencies
 openai-whisper>=20231117
 ffmpeg-python>=0.2.0
 PyQt6>=6.5.0
 deep_translator>=1.11.4
 pysrt>=1.1.2
+
+# GPU Acceleration & Performance
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.21.0
+
+# Advanced Audio Processing
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.9.0
+noisereduce>=3.0.0
+webrtcvad>=2.0.0
+
+# Enhanced UI Features
+tkinterdnd2>=0.3.0
+
+# Data Storage & Caching (sqlite3 is built-in with Python)
+
+# Optional GPU Support (uncomment for CUDA)
+# torch>=2.0.0+cu118
+# torchaudio>=2.0.0+cu118
+
+# Optional OpenCL Support
+# pyopencl>=2023.1.0
