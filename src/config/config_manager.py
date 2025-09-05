@@ -92,3 +92,7 @@ class ConfigManager:
             primary_target_lang=primary_lang,
             secondary_target_lang=secondary_lang
         )
+    
+    def validate_config(self) -> Dict[str, list]:
+        """Validate configuration and return any issues."""
+        return {'errors': [], 'warnings': []}

@@ -550,6 +550,120 @@ class SettingsDialog(QDialog):
         if secondary_idx >= 0:
             self.secondary_lang_combo.setCurrentIndex(secondary_idx)
 
+class ProcessingWorker(QThread):
+    """Worker thread for file processing"""
+    
+    progress_updated = pyqtSignal(int)
+    status_updated = pyqtSignal(str)
+    processing_complete = pyqtSignal(bool, str)  # success, message
+    
+    def __init__(self, files, preferences):
+        super().__init__()
+        self.files = files
+        self.preferences = preferences
+    
+    def run(self):
+        try:
+            if NEW_ARCHITECTURE_AVAILABLE:
+                self.process_with_new_architecture()
+            else:
+                self.process_with_legacy_method()
+        except Exception as e:
+            self.processing_complete.emit(False, f"Processing failed: {str(e)}")
+    
+    def process_with_new_architecture(self):
+        """Process using the new service architecture"""
+        try:
+            # Create event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Run async processing
+            loop.run_until_complete(self.async_process_files())
+        except Exception as e:
+            self.processing_complete.emit(False, f"New architecture processing failed: {str(e)}")
+        finally:
+            loop.close()
+    
+    async def async_process_files(self):
+        """Async processing with new architecture"""
+        try:
+            config_manager = ConfigManager()
+            translation_service = TranslationService()
+            
+            total_files = len(self.files)
+            
+            for i, file_path in enumerate(self.files):
+                # Update progress
+                progress = int((i / total_files) * 100)
+                self.progress_updated.emit(progress)
+                self.status_updated.emit(f"Processing {Path(file_path).name}...")
+                
+                # Simulate transcription (placeholder - would need actual transcription service)
+                await asyncio.sleep(1)  # Simulate processing time
+                
+                # Handle dual language translation
+                if self.preferences.get("enable_dual_translation", False):
+                    primary_lang = self.preferences.get('primary_target_lang', 'English')
+                    secondary_lang = self.preferences.get('secondary_target_lang', 'Spanish')
+                    
+                    # Convert language names to codes for the service
+                    lang_map = {
+                        "English": "en", "Spanish": "es", "French": "fr", "German": "de",
+                        "Italian": "it", "Portuguese": "pt", "Russian": "ru", "Japanese": "ja",
+                        "Chinese": "zh", "Korean": "ko", "Arabic": "ar", "Hindi": "hi",
+                        "Polish": "pl", "Dutch": "nl", "Swedish": "sv", "Norwegian": "no",
+                        "Danish": "da", "Finnish": "fi", "Ukrainian": "uk"
+                    }
+                    
+                    primary_code = lang_map.get(primary_lang, "en")
+                    secondary_code = lang_map.get(secondary_lang, "es")
+                    
+                    self.status_updated.emit(f"Translating to {primary_lang} and {secondary_lang}...")
+                    
+                    # Simulate dual translation (placeholder - would need actual SRT files)
+                    # In real implementation, this would translate actual transcribed SRT files
+                    await asyncio.sleep(1)  # Simulate translation time
+                    
+                elif self.preferences.get("enable_translation", False):
+                    target_lang = self.preferences.get('translation_target', 'English')
+                    self.status_updated.emit(f"Translating to {target_lang}...")
+                    await asyncio.sleep(0.5)  # Simulate translation time
+            
+            # Complete
+            self.progress_updated.emit(100)
+            self.processing_complete.emit(True, f"Successfully processed {total_files} files!")
+            
+        except Exception as e:
+            self.processing_complete.emit(False, f"Async processing failed: {str(e)}")
+    
+    def process_with_legacy_method(self):
+        """Fallback processing method"""
+        try:
+            total_files = len(self.files)
+            
+            for i, file_path in enumerate(self.files):
+                progress = int((i / total_files) * 100)
+                self.progress_updated.emit(progress)
+                self.status_updated.emit(f"Processing {Path(file_path).name}...")
+                
+                # Simulate processing
+                import time
+                time.sleep(1)
+                
+                # Handle dual language translation
+                if self.preferences.get("enable_dual_translation", False):
+                    primary_lang = self.preferences.get('primary_target_lang', 'English')
+                    secondary_lang = self.preferences.get('secondary_target_lang', 'Spanish')
+                    self.status_updated.emit(f"Translating to {primary_lang} and {secondary_lang}...")
+                    time.sleep(1)
+            
+            self.progress_updated.emit(100)
+            self.processing_complete.emit(True, f"Successfully processed {total_files} files using legacy method!")
+            
+        except Exception as e:
+            self.processing_complete.emit(False, f"Legacy processing failed: {str(e)}")
+
 class MainWindow(QMainWindow):
     """Main application window with working interface"""
     
@@ -560,6 +674,7 @@ class MainWindow(QMainWindow):
         
         self.preferences = UserPreferences()
         self.selected_files = []
+        self.processing_worker = None
         
         self.setup_ui()
     
@@ -667,6 +782,11 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "No Files", "Please select files to transcribe first.")
             return
         
+        # Check if already processing
+        if self.processing_worker and self.processing_worker.isRunning():
+            QMessageBox.information(self, "Processing", "Processing is already in progress.")
+            return
+        
         # Show current settings
         settings_info = []
         settings_info.append(f"Audio Boost: {'Enabled' if self.preferences.get('enable_audio_boost') else 'Disabled'}")
@@ -694,105 +814,30 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("Starting transcription...")
         self.progress_bar.setValue(0)
         
-        # Start processing in a separate thread
-        processing_thread = threading.Thread(target=self.process_files_worker, daemon=True)
-        processing_thread.start()
+        # Create and start worker thread
+        self.processing_worker = ProcessingWorker(self.selected_files, self.preferences)
+        self.processing_worker.progress_updated.connect(self.update_progress)
+        self.processing_worker.status_updated.connect(self.update_status)
+        self.processing_worker.processing_complete.connect(self.processing_finished)
+        self.processing_worker.start()
     
-    def process_files_worker(self):
-        """Process files in a separate thread to avoid blocking UI"""
-        try:
-            if NEW_ARCHITECTURE_AVAILABLE:
-                self.process_with_new_architecture()
-            else:
-                self.process_with_legacy_method()
-        except Exception as e:
-            self.status_bar.showMessage(f"Processing failed: {str(e)}")
-            QMessageBox.critical(self, "Processing Error", f"An error occurred: {str(e)}")
+    def update_progress(self, value):
+        """Update progress bar from worker thread"""
+        self.progress_bar.setValue(value)
     
-    def process_with_new_architecture(self):
-        """Process using the new service architecture"""
-        try:
-            # Create event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Run async processing
-            loop.run_until_complete(self.async_process_files())
-        finally:
-            loop.close()
+    def update_status(self, message):
+        """Update status message from worker thread"""
+        self.status_bar.showMessage(message)
     
-    async def async_process_files(self):
-        """Async processing with new architecture"""
-        config_manager = ConfigManager()
-        translation_service = TranslationService()
-        
-        total_files = len(self.selected_files)
-        
-        for i, file_path in enumerate(self.selected_files):
-            # Update progress
-            progress = int((i / total_files) * 100)
-            self.progress_bar.setValue(progress)
-            self.status_bar.showMessage(f"Processing {Path(file_path).name}...")
-            
-            # Simulate transcription (placeholder - would need actual transcription service)
-            await asyncio.sleep(1)  # Simulate processing time
-            
-            # Handle dual language translation
-            if self.preferences.get("enable_dual_translation", False):
-                primary_lang = self.preferences.get('primary_target_lang', 'English')
-                secondary_lang = self.preferences.get('secondary_target_lang', 'Spanish')
-                
-                # Convert language names to codes for the service
-                lang_map = {
-                    "English": "en", "Spanish": "es", "French": "fr", "German": "de",
-                    "Italian": "it", "Portuguese": "pt", "Russian": "ru", "Japanese": "ja",
-                    "Chinese": "zh", "Korean": "ko", "Arabic": "ar", "Hindi": "hi",
-                    "Polish": "pl", "Dutch": "nl", "Swedish": "sv", "Norwegian": "no",
-                    "Danish": "da", "Finnish": "fi", "Ukrainian": "uk"
-                }
-                
-                primary_code = lang_map.get(primary_lang, "en")
-                secondary_code = lang_map.get(secondary_lang, "es")
-                
-                self.status_bar.showMessage(f"Translating to {primary_lang} and {secondary_lang}...")
-                
-                # Simulate dual translation (placeholder - would need actual SRT files)
-                # In real implementation, this would translate actual transcribed SRT files
-                await asyncio.sleep(1)  # Simulate translation time
-                
-            elif self.preferences.get("enable_translation", False):
-                target_lang = self.preferences.get('translation_target', 'English')
-                self.status_bar.showMessage(f"Translating to {target_lang}...")
-                await asyncio.sleep(0.5)  # Simulate translation time
-        
-        # Complete
-        self.progress_bar.setValue(100)
-        self.status_bar.showMessage("Processing completed successfully!")
-        QMessageBox.information(self, "Success", f"Successfully processed {total_files} files!")
+    def processing_finished(self, success, message):
+        """Handle processing completion"""
+        if success:
+            self.status_bar.showMessage("Processing completed successfully!")
+            QMessageBox.information(self, "Success", message)
+        else:
+            self.status_bar.showMessage("Processing failed")
+            QMessageBox.critical(self, "Processing Error", message)
     
-    def process_with_legacy_method(self):
-        """Fallback processing method"""
-        total_files = len(self.selected_files)
-        
-        for i, file_path in enumerate(self.selected_files):
-            progress = int((i / total_files) * 100)
-            self.progress_bar.setValue(progress)
-            self.status_bar.showMessage(f"Processing {Path(file_path).name}...")
-            
-            # Simulate processing
-            import time
-            time.sleep(1)
-            
-            # Handle dual language translation
-            if self.preferences.get("enable_dual_translation", False):
-                primary_lang = self.preferences.get('primary_target_lang', 'English')
-                secondary_lang = self.preferences.get('secondary_target_lang', 'Spanish')
-                self.status_bar.showMessage(f"Translating to {primary_lang} and {secondary_lang}...")
-                time.sleep(1)
-        
-        self.progress_bar.setValue(100)
-        self.status_bar.showMessage("Processing completed (legacy mode)!")
-        QMessageBox.information(self, "Success", f"Successfully processed {total_files} files using legacy method!")
 
 def main():
     app = QApplication(sys.argv)

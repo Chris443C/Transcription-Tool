@@ -143,30 +143,65 @@ class EnhancedTranscriptionGUI:
         self._create_statistics_tab()
     
     def _create_main_tab(self):
-        """Create the main processing tab"""
-        # Configure grid weights
+        """Create the main processing tab with scrollable content"""
+        # Configure grid weights for the main frame
         self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.rowconfigure(0, weight=1)
+        
+        # Create a canvas and scrollbar for scrollable content
+        canvas = tk.Canvas(self.main_frame, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.main_frame, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        
+        # Configure canvas scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Grid the canvas and scrollbar
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        
+        # Configure scrollable frame grid weights
+        self.scrollable_frame.columnconfigure(0, weight=1)
+        
+        # Bind mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        def _bind_to_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        def _unbind_from_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+        
+        canvas.bind('<Enter>', _bind_to_mousewheel)
+        canvas.bind('<Leave>', _unbind_from_mousewheel)
         
         # File selection section
-        self._create_enhanced_file_selection(self.main_frame, 0)
+        self._create_enhanced_file_selection(self.scrollable_frame, 0)
         
         # Processing options section
-        self._create_enhanced_processing_options(self.main_frame, 1)
+        self._create_enhanced_processing_options(self.scrollable_frame, 1)
         
         # Output directories section
-        self._create_enhanced_output_directories(self.main_frame, 2)
+        self._create_enhanced_output_directories(self.scrollable_frame, 2)
         
         # Language selection section
-        self._create_enhanced_language_section(self.main_frame, 3)
+        self._create_enhanced_language_section(self.scrollable_frame, 3)
         
         # Progress section with enhanced features
-        self._create_enhanced_progress_section(self.main_frame, 4)
+        self._create_enhanced_progress_section(self.scrollable_frame, 4)
         
         # Control buttons with enhanced features
-        self._create_enhanced_control_buttons(self.main_frame, 5)
+        self._create_enhanced_control_buttons(self.scrollable_frame, 5)
         
         # Enhanced status display
-        self._create_enhanced_status_section(self.main_frame, 6)
+        self._create_enhanced_status_section(self.scrollable_frame, 6)
     
     def _create_enhanced_file_selection(self, parent, row):
         """Create enhanced file selection with drag-drop support"""
@@ -308,7 +343,7 @@ class EnhancedTranscriptionGUI:
         dual_mode_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         
         self.dual_translation_var = tk.BooleanVar(
-            value=self.config_manager.is_dual_translation_enabled()
+            value=False  # Default to multi-language mode
         )
         dual_checkbox = ttk.Checkbutton(
             dual_mode_frame, 
@@ -403,10 +438,22 @@ class EnhancedTranscriptionGUI:
         button_frame = ttk.Frame(parent)
         button_frame.grid(row=row, column=0, pady=15)
         
-        # Main processing button with enhanced state management
-        self.process_button = ttk.Button(button_frame, text="Start Processing", 
-                                       command=self._start_processing,
-                                       style="Accent.TButton")
+        # Main processing button with enhanced state management (using tk.Button for better color control)
+        self.process_button = tk.Button(
+            button_frame, 
+            text="Start Processing",
+            command=self._start_processing,
+            bg="#10B981",              # Green background
+            fg="white",                # White text
+            activebackground="#059669", # Darker green when pressed
+            activeforeground="white",   # White text when pressed
+            font=("Segoe UI", 10, "bold"),
+            borderwidth=0,
+            relief="flat",
+            padx=20,
+            pady=12,
+            cursor="hand2"
+        )
         self.process_button.pack(side=tk.LEFT, padx=5)
         
         # Enhanced cancel button
@@ -573,8 +620,11 @@ class EnhancedTranscriptionGUI:
         languages_frame = ttk.Frame(self.language_selection_frame)
         languages_frame.pack(fill=tk.X, pady=5)
         
-        self.language_vars = {}
-        self.language_checkboxes = {}
+        # Only initialize language_vars if not already initialized
+        if not hasattr(self, 'language_vars') or not self.language_vars:
+            self.language_vars = {}
+        if not hasattr(self, 'language_checkboxes') or not self.language_checkboxes:
+            self.language_checkboxes = {}
         
         languages = [
             ("Spanish", "es"), ("French", "fr"), ("German", "de"), ("Italian", "it"),
@@ -586,8 +636,10 @@ class EnhancedTranscriptionGUI:
         
         # Create checkboxes in a grid (4 columns)
         for i, (lang_name, lang_code) in enumerate(languages):
-            var = tk.BooleanVar()
-            self.language_vars[lang_code] = var
+            # Only create new BooleanVar if it doesn't exist
+            if lang_code not in self.language_vars:
+                self.language_vars[lang_code] = tk.BooleanVar()
+            var = self.language_vars[lang_code]
             
             row_pos = i // 4
             col_pos = i % 4
@@ -687,8 +739,18 @@ class EnhancedTranscriptionGUI:
     
     def _log_message(self, message: str, level: str = "info"):
         """Add a message to the status log."""
-        # This is a placeholder - implement actual logging to status text widget
-        print(f"[{level.upper()}] {message}")
+        timestamp = time.strftime("%H:%M:%S")
+        formatted_message = f"[{timestamp}] {message}\n"
+        
+        # Thread-safe GUI update
+        def update_gui():
+            self.status_text.insert(tk.END, formatted_message, level)
+            self.status_text.see(tk.END)
+        
+        if threading.current_thread() == threading.main_thread():
+            update_gui()
+        else:
+            self.root.after(0, update_gui)
     
     # File selection and utility methods
     def _select_files(self):
@@ -760,13 +822,185 @@ class EnhancedTranscriptionGUI:
     
     # Placeholder methods for missing functionality
     def _start_processing(self):
-        """Start the processing workflow."""
-        # This would implement the actual processing logic
-        pass
+        """Start the processing workflow or cancel if already processing."""
+        # If already processing, cancel instead
+        if self.is_processing:
+            self._cancel_processing()
+            return
+            
+        # Validate inputs
+        if not self.selected_files:
+            messagebox.showerror("Error", "Please select at least one file to process.")
+            return
+        
+        # Validate output directories
+        subtitle_dir = self.subtitle_dir_var.get().strip()
+        audio_dir = self.audio_dir_var.get().strip()
+        
+        if not subtitle_dir:
+            messagebox.showerror("Error", "Please specify a subtitles output directory.")
+            return
+        
+        if not audio_dir:
+            messagebox.showerror("Error", "Please specify a boosted audio output directory.")
+            return
+        
+        # Create directories if they don't exist
+        try:
+            Path(subtitle_dir).mkdir(parents=True, exist_ok=True)
+            Path(audio_dir).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create output directories: {e}")
+            return
+        
+        # Get translation languages
+        target_languages = []
+        if self.dual_translation_var.get():
+            # Dual language mode
+            primary_name = self.primary_lang_var.get()
+            secondary_name = self.secondary_lang_var.get()
+            
+            primary_code = next((code for name, code in self.language_list if name == primary_name), "en")
+            secondary_code = next((code for name, code in self.language_list if name == secondary_name), "es")
+            
+            target_languages = [primary_code, secondary_code]
+            self._log_message(f"Dual mode: primary={primary_name}({primary_code}), secondary={secondary_name}({secondary_code})", "info")
+        else:
+            # Multi-language mode
+            target_languages = [code for code, var in self.language_vars.items() if var.get()]
+            selected_names = [name for name, code in self.language_list if code in target_languages]
+            self._log_message(f"Multi-language mode: selected {len(target_languages)} languages: {', '.join(selected_names)}", "info")
+        
+        # Prepare processing options
+        from ..core.enhanced_facade import ProcessingOptions
+        
+        options = ProcessingOptions(
+            boost_audio=self.boost_audio_var.get(),
+            boost_level=int(self.boost_level_var.get()),
+            target_languages=target_languages,
+            subtitle_dir=subtitle_dir,
+            boosted_audio_dir=audio_dir,
+            whisper_model=self.model_var.get(),
+            max_concurrent_files=2,
+            enable_pipeline_parallel=True,
+            max_retries=2,
+            continue_on_error=True
+        )
+        
+        # Update UI state
+        self.is_processing = True
+        self.processing_start_time = time.time()
+        self._update_ui_state()
+        
+        # Clear previous results
+        self._clear_status_log()
+        self._log_message(f"Starting processing of {len(self.selected_files)} files...", "info")
+        self._log_message(f"Target languages: {', '.join(target_languages) if target_languages else 'None (transcription only)'}", "info")
+        
+        # Start processing in separate thread
+        self.processing_thread = threading.Thread(
+            target=self._process_files_thread,
+            args=(self.selected_files.copy(), options),
+            daemon=True
+        )
+        self.processing_thread.start()
+    
+    def _process_files_thread(self, file_paths: List[str], options):
+        """Process files in a separate thread."""
+        try:
+            # Initialize progress
+            self._update_progress(0.0, "Initializing processing...")
+            
+            # Process files using the enhanced facade
+            jobs = self.processing_facade.process_files(file_paths, options)
+            
+            # Update final status
+            successful_jobs = [job for job in jobs if job.status == ProcessingStatus.COMPLETED]
+            failed_jobs = [job for job in jobs if job.status == ProcessingStatus.FAILED]
+            
+            self._log_message(f"Processing completed: {len(successful_jobs)} successful, {len(failed_jobs)} failed", "info")
+            
+            # Show completion message
+            if successful_jobs:
+                self._log_message(f"Successfully processed {len(successful_jobs)} files", "success")
+            
+            if failed_jobs:
+                self._log_message(f"Failed to process {len(failed_jobs)} files", "error")
+                for job in failed_jobs:
+                    if job.error_message:
+                        self._log_message(f"  - {Path(job.file_path).name}: {job.error_message}", "error")
+            
+            self._update_progress(1.0, "Processing complete")
+            
+        except Exception as e:
+            error_msg = str(e)
+            self._log_message(f"Processing error: {error_msg}", "error")
+            self._update_progress(0.0, "Processing failed")
+            
+            # Show user-friendly error dialog for common issues
+            if "FFmpeg not found" in error_msg:
+                messagebox.showerror(
+                    "FFmpeg Required", 
+                    "FFmpeg is required for audio processing but was not found.\n\n"
+                    "Please install FFmpeg:\n"
+                    "1. Download from: https://ffmpeg.org/download.html\n"
+                    "2. Add FFmpeg to your system PATH\n"
+                    "3. Restart this application\n\n"
+                    "For detailed installation instructions, see the README file."
+                )
+            elif "Whisper not found" in error_msg:
+                messagebox.showerror(
+                    "Whisper Required",
+                    "OpenAI Whisper is required for transcription but was not found.\n\n"
+                    "Please install Whisper:\n"
+                    "Run in command prompt: pip install openai-whisper\n\n"
+                    "Then restart this application."
+                )
+        
+        finally:
+            # Reset UI state
+            self.is_processing = False
+            self.root.after(0, self._update_ui_state)
+    
+    def _update_ui_state(self):
+        """Update UI state based on processing status."""
+        if self.is_processing:
+            self.process_button.config(
+                text="Cancel Processing", 
+                state="normal",
+                bg="#EF4444",              # Red background for cancel
+                fg="white",                # White text
+                activebackground="#DC2626" # Darker red when pressed
+            )
+            self.cancel_button.config(state="disabled")
+            self.pause_button.config(state="normal")
+        else:
+            self.process_button.config(
+                text="Start Processing", 
+                state="normal",
+                bg="#10B981",              # Green background for start
+                fg="white",                # White text
+                activebackground="#059669" # Darker green when pressed
+            )
+            self.cancel_button.config(state="disabled")  
+            self.pause_button.config(state="disabled")
     
     def _cancel_processing(self):
         """Cancel the current processing."""
-        pass
+        if self.is_processing and self.processing_thread and self.processing_thread.is_alive():
+            self._log_message("Canceling processing...", "warning")
+            
+            # Try to cancel the processing facade
+            try:
+                # This would require implementing cancellation in the facade
+                self.processing_facade.cancel_processing()
+            except AttributeError:
+                self._log_message("Graceful cancellation not available, forcing stop...", "warning")
+            
+            self.is_processing = False
+            self._update_ui_state()
+            self._update_progress(0.0, "Processing canceled")
+            self._log_message("Processing canceled by user", "warning")
     
     def _pause_processing(self):
         """Pause/resume processing."""
@@ -848,9 +1082,33 @@ class EnhancedTranscriptionGUI:
     
     def _update_progress(self, progress: float, message: str):
         """Update progress display."""
-        self.progress_var.set(progress * 100)
-        self.progress_percent_var.set(f"{progress * 100:.1f}%")
-        self.status_var.set(message)
+        def update_gui():
+            # Handle None progress values
+            if progress is None:
+                progress_value = 0.0
+            else:
+                progress_value = float(progress)
+            
+            self.progress_var.set(progress_value * 100)
+            self.progress_percent_var.set(f"{progress_value * 100:.1f}%")
+            self.status_var.set(message or "Processing...")
+            
+            # Update timing information if processing
+            if self.is_processing and self.processing_start_time:
+                elapsed = time.time() - self.processing_start_time
+                if progress_value > 0:
+                    estimated_total = elapsed / progress_value
+                    remaining = estimated_total - elapsed
+                    self.timing_var.set(f"Elapsed: {elapsed:.0f}s, Est. remaining: {remaining:.0f}s")
+                else:
+                    self.timing_var.set(f"Elapsed: {elapsed:.0f}s")
+            else:
+                self.timing_var.set("")
+        
+        if threading.current_thread() == threading.main_thread():
+            update_gui()
+        else:
+            self.root.after(0, update_gui)
     
     def _check_progress_queue(self):
         """Check for progress updates in the queue."""
@@ -881,9 +1139,63 @@ class EnhancedTranscriptionGUI:
         """Apply UI theme and styling"""
         style = ttk.Style()
         
-        # Configure button styles
-        style.configure("Accent.TButton", foreground="white", 
+        # Configure button styles with proper contrast
+        style.configure("Accent.TButton", 
+                       background="#10B981",  # Green background
+                       foreground="white",    # White text  
+                       borderwidth=0,
+                       focuscolor='none',
+                       font=("TkDefaultFont", 10, "bold"))
+        
+        # Button hover states
+        style.map("Accent.TButton",
+                 background=[('active', '#059669'),    # Darker green on hover
+                            ('pressed', '#047857')])   # Even darker when pressed
+        
+        # Secondary button style
+        style.configure("Secondary.TButton",
+                       background="#F3F4F6",   # Light gray background
+                       foreground="#374151",   # Dark gray text
+                       borderwidth=1,
+                       relief="solid",
+                       focuscolor='none',
+                       font=("TkDefaultFont", 9))
+        
+        style.map("Secondary.TButton",
+                 background=[('active', '#E5E7EB')])  # Slightly darker gray on hover
+        
+        # Danger button style  
+        style.configure("Danger.TButton",
+                       background="#EF4444",   # Red background
+                       foreground="white",     # White text
+                       borderwidth=0,
+                       focuscolor='none',
                        font=("TkDefaultFont", 9, "bold"))
+        
+        style.map("Danger.TButton",
+                 background=[('active', '#DC2626')])  # Darker red on hover
+        
+        # Additional UI improvements
+        style.configure("Modern.TFrame",
+                       background="#F8FAFC",    # Light background for frames
+                       relief="flat")
+        
+        # Improve entry field styling
+        style.configure("Modern.TEntry",
+                       fieldbackground="white",
+                       borderwidth=2,
+                       insertcolor="#2563EB")
+        
+        # Improve labels
+        style.configure("Heading.TLabel", 
+                       background="#F8FAFC",
+                       foreground="#1F2937",
+                       font=("Segoe UI", 12, "bold"))
+        
+        style.configure("Body.TLabel",
+                       background="#F8FAFC", 
+                       foreground="#374151",
+                       font=("Segoe UI", 9))
     
     def _schedule_preference_save(self):
         """Schedule periodic preference saving"""

@@ -18,7 +18,7 @@
     "default_target_lang": "en",
     "enable_dual_translation": true,
     "primary_target_lang": "en",
-    "secondary_target_lang": "es"
+    "secondary_target_lang": "pl"
   },
   "processing": {
     "max_concurrent_jobs": 3,

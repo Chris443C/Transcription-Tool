@@ -562,7 +562,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 ## **📞 Support**
 
 - **Issues**: Report bugs and feature requests on GitHub Issues
-- **Documentation**: Complete documentation available in the `/docs` folder
+- **Documentation**: Complete documentation available in the `CLAUDE.md` file
 - **Performance**: Check the troubleshooting section for optimization tips
 
 ---

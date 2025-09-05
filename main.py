@@ -28,8 +28,15 @@ def run_enhanced_gui():
 def run_legacy_gui():
     """Run the legacy GUI"""
     try:
-        # Try to import the legacy GUI from the current directory
-        if os.path.exists("boost_and_transcribe_gui.py"):
+        # Try to import the working legacy GUI from archive
+        archive_gui = "archive/boost_and_transcribe_gui - Copy.py"
+        if os.path.exists(archive_gui):
+            print(f"[OK] Starting legacy GUI from {archive_gui}...")
+            # Execute the working legacy GUI directly
+            import subprocess
+            import sys
+            subprocess.run([sys.executable, archive_gui])
+        elif os.path.exists("boost_and_transcribe_gui.py"):
             import boost_and_transcribe_gui
             print("[OK] Starting legacy GUI...")
             # If the legacy GUI has a main function, call it
@@ -38,7 +45,7 @@ def run_legacy_gui():
             else:
                 print("WARNING: Legacy GUI found but no main function")
         else:
-            print("[ERROR] Legacy GUI not found (boost_and_transcribe_gui.py)")
+            print("[ERROR] Legacy GUI not found")
             print("Available files:")
             for file in os.listdir("."):
                 if file.endswith(".py"):
